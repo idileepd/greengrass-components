@@ -1,0 +1,19 @@
+{
+  "component": {
+    "com.example.GGCommunicatorPy": {
+      "author": "Dileep",
+      "version": "NEXT_PATCH",
+      "build": {
+        "build_system": "zip",
+        "options": {
+          "zip_name": ""
+        }
+      },
+      "publish": {
+        "bucket": "greengrass-components",
+        "region": "us-east-1"
+      }
+    }
+  },
+  "gdk_version": "1.6.2"
+}
