@@ -2,7 +2,7 @@
   "component": {
     "com.example.GGCommunicatorPy": {
       "author": "Dileep",
-      "version": "NEXT_PATCH",
+      "version": "2.0.1",
       "build": {
         "build_system": "zip",
         "options": {
@@ -18,12 +18,7 @@
   "gdk_version": "1.6.2",
   "dependencies": {
     "python3": {
-      "dependencies": [
-        "awsiotsdk",
-        "boto3",
-        "botocore",
-        "awsiot"
-      ]
+      "dependencies": ["awsiotsdk", "boto3", "botocore", "awsiot"]
     }
   }
 }
