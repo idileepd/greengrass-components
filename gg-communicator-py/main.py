@@ -2,97 +2,54 @@ import sys
 import os
 import src.greeter as greeter
 import time
-
 import boto3
+from src.dynamodb_util import DynamoDBUtil
 
 
 def getAwsInfo():
-    device_info = {
-        "thing_name": os.environ.get("AWS_IOT_THING_NAME"),
-        "aws_region": os.environ.get("AWS_REGION"),
-    }
+    try:
+        # region = boto3.session.Session().region_name
+        sts_client = boto3.client("sts")
+        account_id = sts_client.get_caller_identity()["Account"]
 
-    # # Print available information
-    # for key, value in device_info.items():
-    #     if value:
-    #         print(f"{key}: {value}")
-    #     else:
-    #         print(f"{key} not available")
+        device_info = {
+            "thing_name": os.environ.get("AWS_IOT_THING_NAME"),
+            "aws_region": os.environ.get("AWS_REGION"),
+            "aws_account_id": account_id,
+        }
+        return device_info
+    except:
+        print("An exception occurred getting aws info")
+        return {}
 
-    return device_info
 
+def run_test():
+    # try:
+    # Initialize the utility
+    dynamodb_util = DynamoDBUtil(table_name="gg-devices-data", thing_name="MyThingName")
 
-print("Hello 9999")
+    # Add a record
+    data_to_add = {"temperature": 22.5, "humidity": 60}
+    pk = dynamodb_util.add_record(data=data_to_add)
+    print(f"Added record with PK: {pk}")
+
+    # Update a record
+    update_data = {"temperature": 24.0}
+    dynamodb_util.update_record(pk=pk, update_data=update_data)
+    print(f"Updated record with PK: {pk}")
+    # except:
+    #     print("Error Dynamodb")
 
 
 def main():
     args = sys.argv[1:]
-    print("kkkkkkkkk Command-line arguments:", args)
     while True:
-        print("\n\n*********")
-        greeting = greeter.get_greeting(" ".join(args))
-        print("Greeting:", greeting)
-        print(getAwsInfo())
+        print("::: args - ", args)
+        print("::: aws info", getAwsInfo())
+        run_test()
 
-        # region = boto3.session.Session().region_name
-        # print(f"%%%%%%%%%%%%Region: {region}")
-
-        # sts_client = boto3.client("sts")
-        # account_id = sts_client.get_caller_identity()["Account"]
-        # print(f"%%%%%%%%%%%%Account ID: {account_id}")
-
-        time.sleep(5)
+        time.sleep(20)
 
 
 if __name__ == "__main__":
     main()
-
-# import os
-# import json
-# import awsiot.greengrasscoreipc
-# import awsiot.greengrasscoreipc.client as client
-# from awsiot.greengrasscoreipc.model import (
-#     GetThingNameRequest,
-#     SubscribeToIoTCoreRequest,
-#     PublishToIoTCoreRequest
-# )
-
-# TIMEOUT = 10
-
-# def get_device_info():
-#     try:
-#         # Initialize IPC client
-#         ipc_client = awsiot.greengrasscoreipc.connect()
-
-#         # Get thing name using IPC
-#         thing_name_request = GetThingNameRequest()
-#         thing_name_response = ipc_client.get_thing_name(thing_name_request)
-#         thing_name = thing_name_response.thing_name
-
-#         # Get other environment variables
-#         device_info = {
-#             'thing_name': thing_name,
-#             'aws_region': os.environ.get('AWS_REGION'),
-#             'account_id': os.environ.get('AWS_ACCOUNT_ID', ''),
-#             'gg_component_name': os.environ.get('AWS_GREENGRASS_COMPONENT_NAME', ''),
-#             'gg_root': os.environ.get('AWS_GREENGRASS_ROOT', '')
-#         }
-
-#         print("Device Info:", json.dumps(device_info, indent=2))
-#         return device_info
-
-#     except Exception as e:
-#         print(f"Error getting device info: {str(e)}")
-#         return None
-
-# def main():
-#     # Get device information
-#     device_info = get_device_info()
-
-#     if device_info:
-#         print(f"Successfully retrieved device info for thing: {device_info['thing_name']}")
-#     else:
-#         print("Failed to get device information")
-
-# if __name__ == '__main__':
-#     main()

@@ -8,7 +8,7 @@ ComponentConfiguration:
     # AWS_REGION: "aws:region"  # Greengrass environment variable for region
     # AWS_ACCOUNT_ID: "aws:accountId"  # Greengrass environment variable for account ID
     DB_TABLE_NAME: "gg-devices-data"
-    DEVICE_ID: "<placeholder>"
+    # DEVICE_ID: "<placeholder>"
     DEVICE_PORT: "<placeholder>"
     ENABLE_HEART_BEAT: "True"
     Logging:
@@ -63,12 +63,13 @@ Manifests:
 
 Lifecycle:
   Install: |
+    #!/bin/bash
     echo "[gg-communicator-py] Lifecycle - Install started"
     USERNAME=$(whoami)
     echo "[gg-communicator-py] Current user: $USERNAME"
-    
-    ENV_DIR="/home/$USERNAME/.local/.greengrass-env"
-    
+
+    ENV_DIR="/home/$USERNAME/.local/.gg-env"
+
     if [ ! -d "$ENV_DIR" ]; then
       echo "[gg-communicator-py] Creating the env at location: $ENV_DIR"
       python3 -m venv "$ENV_DIR"
@@ -76,23 +77,42 @@ Lifecycle:
       echo "[gg-communicator-py] Virtual environment already exists at $ENV_DIR, so skipping"
     fi
 
+    # /home/ggc_user/.local/.gg-env/bin/pip: :::::: NOTE this is not found 
+
     echo "[gg-communicator-py] Upgrading pip in the virtual environment"
     "$ENV_DIR/bin/pip" install --upgrade pip
 
     echo "[gg-communicator-py] Installing dependencies from requirements.txt"
     #Using the gdk config to install dependencies
-    # "$ENV_DIR/bin/pip" install -r {artifacts:decompressedPath}/com.example.GGCommunicatorPy/requirements.txt
+    "$ENV_DIR/bin/pip" install -r {artifacts:decompressedPath}/com.example.GGCommunicatorPy/requirements.txt
+    # "pip" install -r {artifacts:decompressedPath}/com.example.GGCommunicatorPy/requirements.txt
 
     echo "[gg-communicator-py] Done with Install Lifecycle"
 
   Run: |
+    # Add export aws tokens here  <<>>
+
     echo "[gg-communicator-py] Lifecycle - Run started"
     USERNAME=$(whoami)
     echo "[gg-communicator-py] Current user: $USERNAME"
 
-    ENV_DIR="/home/$USERNAME/.local/.greengrass-env"
+    # ENV_DIR="/home/$USERNAME/.local/.gg-env"
+    # echo "[gg-communicator-py] Activating virtual environment from $ENV_DIR"
+    # source "$ENV_DIR/bin/activate"
+
+    # Fixed bash activating source
+    ENV_DIR="/home/$USERNAME/.local/.gg-env"
     echo "[gg-communicator-py] Activating virtual environment from $ENV_DIR"
-    source "$ENV_DIR/bin/activate"
+
+    if [ -f "$ENV_DIR/bin/activate" ]; then
+        . "$ENV_DIR/bin/activate"
+        echo "[gg-communicator-py] Virtual environment activated"
+    else
+        echo "[gg-communicator-py] Virtual environment not found at $ENV_DIR"
+        exit 1
+    fi
+
+
 
     # Export required configuration as environment variables
     # export AWS_REGION="{configuration:/AWS_REGION}"
@@ -101,7 +121,6 @@ Lifecycle:
 
     echo ":::Running main.py script with configuration values"
     "$ENV_DIR/bin/python3" -u {artifacts:decompressedPath}/com.example.GGCommunicatorPy/main.py \
-      "{configuration:/DEVICE_ID}" \
       "{configuration:/DEVICE_PORT}" \
       "{configuration:/ENABLE_HEART_BEAT}" \
       "{configuration:/DB_TABLE_NAME}"
