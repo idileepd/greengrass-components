@@ -15,5 +15,15 @@
       }
     }
   },
-  "gdk_version": "1.6.2"
+  "gdk_version": "1.6.2",
+  "dependencies": {
+    "python3": {
+      "dependencies": [
+        "awsiotsdk",
+        "boto3",
+        "botocore",
+        "awsiot"
+      ]
+    }
+  }
 }

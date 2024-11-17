@@ -1,17 +1,107 @@
----
 RecipeFormatVersion: "2020-01-25"
 ComponentName: "{COMPONENT_NAME}"
 ComponentVersion: "{COMPONENT_VERSION}"
-ComponentDescription: "This is simple Hello World component written in Python."
+ComponentDescription: "This is a simple Hello World component written in Python."
 ComponentPublisher: "{COMPONENT_AUTHOR}"
 ComponentConfiguration:
   DefaultConfiguration:
-    Message: "World"
+    # AWS_REGION: "aws:region"  # Greengrass environment variable for region
+    # AWS_ACCOUNT_ID: "aws:accountId"  # Greengrass environment variable for account ID
+    DB_TABLE_NAME: "gg-devices-data"
+    DEVICE_ID: "<placeholder>"
+    DEVICE_PORT: "<placeholder>"
+    ENABLE_HEART_BEAT: "True"
+    Logging:
+      logLevel: INFO
+      destinations:
+        - cloudWatchLogs
+    accessControl:
+      aws.greengrass.ipc.mqttproxy:
+        "com.example.GGCommunicatorPy:mqttproxy:1":
+          policyDescription: "Allows access to publish and subscribe to IoT Core topics."
+          operations:
+            - "aws.greengrass#PublishToIoTCore"
+            - "aws.greengrass#SubscribeToIoTCore"
+          resources:
+            - "*"
+      aws.greengrass.ipc.dynamodb:
+        "com.example.GGCommunicatorPy:dynamodb:1":
+          policyDescription: "Allows access to DynamoDB all actions."
+          operations:
+            - "*"
+          resources:
+            # - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/gg-devices-data"
+            # - !Sub "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/YourDB_TABLE_NAME"
+            - "*"
+
+# AccessControl:
+#   aws.greengrass.ipc.mqttproxy:
+#     "com.example.GGCommunicatorPy:mqttproxy:1":
+#       policyDescription: "Allows access to publish and subscribe to IoT Core topics."
+#       operations:
+#         - "aws.greengrass#PublishToIoTCore"
+#         - "aws.greengrass#SubscribeToIoTCore"
+#       resources:
+#         - "*"
+
+#   aws.greengrass.ipc.dynamodb:
+#     "com.example.GGCommunicatorPy:dynamodb:1":
+#       policyDescription: "Allows access to DynamoDB all actions."
+#       operations:
+#         - "*"
+#       resources:
+#         # - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/gg-devices-data"
+#         # - !Sub "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/YourDB_TABLE_NAME"
+#         - "*"
+
 Manifests:
   - Platform:
       os: all
     Artifacts:
       - URI: "s3://BUCKET_NAME/COMPONENT_NAME/COMPONENT_VERSION/com.example.GGCommunicatorPy.zip"
         Unarchive: ZIP
-    Lifecycle:
-      Run: "python3 -u {artifacts:decompressedPath}/com.example.GGCommunicatorPy/main.py {configuration:/Message}"
+
+Lifecycle:
+  Install: |
+    echo "[gg-communicator-py] Lifecycle - Install started"
+    USERNAME=$(whoami)
+    echo "[gg-communicator-py] Current user: $USERNAME"
+    
+    ENV_DIR="/home/$USERNAME/.local/.greengrass-env"
+    
+    if [ ! -d "$ENV_DIR" ]; then
+      echo "[gg-communicator-py] Creating the env at location: $ENV_DIR"
+      python3 -m venv "$ENV_DIR"
+    else
+      echo "[gg-communicator-py] Virtual environment already exists at $ENV_DIR, so skipping"
+    fi
+
+    echo "[gg-communicator-py] Upgrading pip in the virtual environment"
+    "$ENV_DIR/bin/pip" install --upgrade pip
+
+    echo "[gg-communicator-py] Installing dependencies from requirements.txt"
+    #Using the gdk config to install dependencies
+    # "$ENV_DIR/bin/pip" install -r {artifacts:decompressedPath}/com.example.GGCommunicatorPy/requirements.txt
+
+    echo "[gg-communicator-py] Done with Install Lifecycle"
+
+  Run: |
+    echo "[gg-communicator-py] Lifecycle - Run started"
+    USERNAME=$(whoami)
+    echo "[gg-communicator-py] Current user: $USERNAME"
+
+    ENV_DIR="/home/$USERNAME/.local/.greengrass-env"
+    echo "[gg-communicator-py] Activating virtual environment from $ENV_DIR"
+    source "$ENV_DIR/bin/activate"
+
+    # Export required configuration as environment variables
+    # export AWS_REGION="{configuration:/AWS_REGION}"
+    # export AWS_ACCOUNT_ID="{configuration:/AWS_ACCOUNT_ID}"
+    # export DB_TABLE_NAME="{configuration:/DB_TABLE_NAME}"
+
+    echo ":::Running main.py script with configuration values"
+    "$ENV_DIR/bin/python3" -u {artifacts:decompressedPath}/com.example.GGCommunicatorPy/main.py \
+      "{configuration:/DEVICE_ID}" \
+      "{configuration:/DEVICE_PORT}" \
+      "{configuration:/ENABLE_HEART_BEAT}" \
+      "{configuration:/DB_TABLE_NAME}"
