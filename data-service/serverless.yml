@@ -1,0 +1,119 @@
+service: test-3
+
+frameworkVersion: "3"
+
+# plugins:
+#   - serverless-esbuild
+
+plugins:
+  # - serverless-esbuild
+  - serverless-offline
+  - serverless-plugin-typescript
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    GG_DEVICE_HISTORY: gg-device-history-2
+    GG_DEVICE_DATA: gg-device-data-2
+    # IOT_ENDPOINT: !Sub "${AWS::IoTEndpoint}" # Dynamic IoT Core endpoint
+    IOT_ENDPOINT: !Sub "https://a2mw7pnesu5ew2-ats.iot.us-east-1.amazonaws.com" # Dynamically retrieves IoT endpoint
+    REGION: ${self:provider.region}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - "iot:Publish"
+          Resource:
+            - "arn:aws:iot:${self:provider.region}:${aws:accountId}:topic/*"
+
+functions:
+  getLatestRecord:
+    handler: src/getDeviceLastUpdate/index.handler
+    events:
+      - httpApi:
+          path: /getDeviceLastUpdate
+          method: get
+  getLimitedRecords:
+    handler: src/getDeviceHistory/index.handler
+    events:
+      - httpApi:
+          path: /getDeviceHistory
+          method: get
+  getDeviceData:
+    handler: src/getDeviceData/index.handler
+    events:
+      - httpApi:
+          path: /getDeviceData
+          method: get
+  sendDataToDevice:
+    handler: src/sendDataToDevice/index.handler
+    description: "Publishes JSON data to an MQTT topic in IoT Core."
+    events:
+      - http:
+          path: /sendDataToDevice
+          method: post
+          cors: true
+
+# custom:
+# esbuild:
+#   bundle: true
+#   minify: false
+# sourcemap: true
+# exclude: ["aws-sdk"]
+# target: "node18"
+# platform: "node"
+# concurrency: 10
+# watch:
+#   pattern: ["src/**/*.ts"]
+# packager: "npm"
+
+package:
+  individually: true
+  patterns:
+    - "!node_modules/.prisma/**"
+    - "!node_modules/@prisma/**"
+    - "!tests/**"
+
+resources:
+  Resources:
+    GGDeviceHistoryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.GG_DEVICE_HISTORY}
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: ThingIndex
+            KeySchema:
+              - AttributeName: sk
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    GGDeviceDATATable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.GG_DEVICE_DATA}
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
